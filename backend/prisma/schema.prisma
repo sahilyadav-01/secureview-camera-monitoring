@@ -1,0 +1,205 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  IT_ADMIN
+  SECURITY_OPERATOR
+  VIEWER
+}
+
+enum CameraStatus {
+  ONLINE
+  OFFLINE
+  UNREACHABLE
+  MAINTENANCE
+}
+
+enum RecordingStatus {
+  RECORDING
+  STOPPED
+  ERROR
+}
+
+enum AlertSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  INVESTIGATING
+  RESOLVED
+}
+
+enum IncidentStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum NvrHealth {
+  HEALTHY
+  WARNING
+  CRITICAL
+  OFFLINE
+}
+
+model User {
+  id           String     @id @default(uuid())
+  name         String
+  email        String     @unique
+  password     String
+  role         Role       @default(SECURITY_OPERATOR)
+  department   String     @default("IT Operations")
+  avatarUrl    String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  alertsAssigned Alert[]
+  incidentsAssigned Incident[]
+}
+
+model Location {
+  id           String     @id @default(uuid())
+  name         String
+  code         String     @unique
+  address      String
+  building     String
+  floors       Int        @default(1)
+  createdAt    DateTime   @default(now())
+  cameras      Camera[]
+  nvrs         Nvr[]
+}
+
+model Nvr {
+  id             String    @id @default(uuid())
+  name           String
+  ipAddress      String    @unique
+  vendor         String
+  model          String
+  serialNumber   String
+  totalChannels  Int       @default(32)
+  usedChannels   Int       @default(0)
+  storageTotalTb Float     @default(10.0)
+  storageUsedTb  Float     @default(0.0)
+  hddHealth      NvrHealth @default(HEALTHY)
+  status         String    @default("ONLINE")
+  firmwareVersion String   @default("v4.2.1")
+  locationId     String?
+  location       Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  cameras        Camera[]
+  alerts         Alert[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Camera {
+  id              String          @id @default(uuid())
+  name            String
+  cameraId        String          @unique
+  ipAddress       String          @unique
+  macAddress      String          @unique
+  locationId      String?
+  location        Location?       @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  building        String
+  floor           String
+  zone            String
+  cameraType      String          @default("DOME") // DOME, BULLET, PTZ, THERMAL
+  manufacturer    String          @default("Hikvision")
+  model           String          @default("DS-2CD2143G0-I")
+  serialNumber    String          @unique
+  protocol        String          @default("RTSP")
+  rtspUrl         String
+  onvifEnabled    Boolean         @default(true)
+  nvrId           String?
+  nvr             Nvr?            @relation(fields: [nvrId], references: [id], onDelete: SetNull)
+  channelNumber   Int             @default(1)
+  resolution      String          @default("1080p")
+  fps             Int             @default(30)
+  status          CameraStatus    @default(ONLINE)
+  recordingStatus RecordingStatus @default(RECORDING)
+  streamUrl       String?
+  installDate     String          @default("2024-01-15")
+  latencyMs       Int             @default(14)
+  lastCheckedAt   DateTime        @default(now())
+  floorX          Float?          @default(50.0)
+  floorY          Float?          @default(50.0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  healthLogs      HealthLog[]
+  alerts          Alert[]
+  incidents       Incident[]
+}
+
+model HealthLog {
+  id          String   @id @default(uuid())
+  cameraId    String
+  camera      Camera   @relation(fields: [cameraId], references: [id], onDelete: Cascade)
+  pingOk      Boolean  @default(true)
+  pingMs      Int      @default(12)
+  tcpPort554  Boolean  @default(true)
+  rtspOk      Boolean  @default(true)
+  onvifOk     Boolean  @default(true)
+  status      String   @default("ONLINE")
+  checkedAt   DateTime @default(now())
+}
+
+model Alert {
+  id           String        @id @default(uuid())
+  title        String
+  description  String
+  severity     AlertSeverity @default(MEDIUM)
+  status       AlertStatus   @default(OPEN)
+  source       String        @default("CAMERA")
+  cameraId     String?
+  camera       Camera?       @relation(fields: [cameraId], references: [id], onDelete: Cascade)
+  nvrId        String?
+  nvr          Nvr?          @relation(fields: [nvrId], references: [id], onDelete: Cascade)
+  assignedToId String?
+  assignedTo   User?         @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  resolvedAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Incident {
+  id              String         @id @default(uuid())
+  ticketNumber    String         @unique
+  title           String
+  description     String
+  cameraId        String?
+  camera          Camera?        @relation(fields: [cameraId], references: [id], onDelete: SetNull)
+  priority        String         @default("HIGH") // CRITICAL, HIGH, MEDIUM, LOW
+  status          IncidentStatus @default(OPEN)
+  rootCause       String?
+  troubleshooting String?
+  downtimeMinutes Int            @default(0)
+  assignedToId    String?
+  assignedTo      User?          @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  resolvedAt      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model AuditLog {
+  id              String   @id @default(uuid())
+  action          String
+  performedById   String?
+  performedByName String
+  role            String
+  target          String
+  details         String
+  ipAddress       String   @default("192.168.1.100")
+  timestamp       DateTime @default(now())
+}
