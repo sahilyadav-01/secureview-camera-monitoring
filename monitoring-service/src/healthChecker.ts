@@ -1,7 +1,16 @@
 import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
+import path from 'path';
 
-const prisma = new PrismaClient();
+const dbPath = process.env.DATABASE_URL || `file:${path.resolve(__dirname, '../../backend/prisma/dev.db')}`;
+
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: dbPath,
+    },
+  },
+});
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
 
 export async function runHealthCheckCycle() {
