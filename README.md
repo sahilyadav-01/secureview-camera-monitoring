@@ -193,8 +193,8 @@ docker-compose down -v
 
 ## 🧪 Testing & Code Quality
 
-### Backend Unit Tests
-Execute the Vitest test suite covering authentication, camera endpoints, alert creation, and health check engines:
+### Backend Unit & Integration Tests
+Execute the Vitest test suite covering authentication, camera endpoints, health diagnostic workers, operational alerts, NVR storage retention, ITIL incident lifecycle, and security audit logging (7 test suites, 17 unit tests):
 ```bash
 cd backend
 npm test
