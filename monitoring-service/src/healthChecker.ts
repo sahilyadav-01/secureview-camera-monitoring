@@ -58,8 +58,8 @@ export async function runHealthCheckCycle() {
         },
       });
 
-      // Automatically generate alert if status dropped to OFFLINE
-      if (newStatus === 'OFFLINE') {
+      // Automatically generate alert if status dropped to OFFLINE or UNREACHABLE
+      if (newStatus === 'OFFLINE' || newStatus === 'UNREACHABLE') {
         const existingOpenAlert = await prisma.alert.findFirst({
           where: {
             cameraId: camera.id,
@@ -68,17 +68,20 @@ export async function runHealthCheckCycle() {
         });
 
         if (!existingOpenAlert) {
+          const severity = newStatus === 'OFFLINE' ? 'CRITICAL' : 'HIGH';
           await prisma.alert.create({
             data: {
-              title: `Camera Offline Detected: ${camera.name}`,
-              description: `Automated ping/RTSP diagnostic check failed for IP ${camera.ipAddress}. No response on TCP Port 554.`,
-              severity: 'CRITICAL',
+              title: `Camera ${newStatus === 'OFFLINE' ? 'Offline' : 'Latency Spike'} Detected: ${camera.name}`,
+              description: newStatus === 'OFFLINE'
+                ? `Automated ICMP/RTSP diagnostic check failed for IP ${camera.ipAddress}. No response on TCP Port 554.`
+                : `Diagnostic probe detected elevated latency (${pingMs}ms) on IP ${camera.ipAddress}.`,
+              severity,
               status: 'OPEN',
               source: 'CAMERA',
               cameraId: camera.id,
             },
           });
-          console.log(`🚨 ALERT GENERATED: Camera ${camera.cameraId} marked OFFLINE.`);
+          console.log(`🚨 ALERT GENERATED: Camera ${camera.cameraId} marked ${newStatus} (${pingMs}ms).`);
         }
       }
     }
