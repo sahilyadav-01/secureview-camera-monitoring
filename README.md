@@ -264,7 +264,7 @@ secureview/
 │   └── nginx.conf          # Production Reverse Proxy Config
 ├── monitoring-service/     # Asynchronous ICMP/TCP/RTSP Health Diagnostics Worker
 │   └── src/
-│       ├── checker.ts      # Diagnostic Ping & Socket Logic
+│       ├── healthChecker.ts # ICMP/TCP Diagnostic Ping & Socket Logic
 │       └── index.ts        # Cron Scheduler & Broadcast Dispatcher
 ├── docs/                   # Platform Technical Specifications
 │   ├── api.md              # REST & WebSocket API Contract
